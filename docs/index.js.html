@@ -30,7 +30,7 @@
 // "Terminal string styling done right" Chalk is a node module that allows color and other text formatting 
 // for output to the console
 var chalk = require('chalk');
-// "Trims string whitespace""
+// "Trims string whitespace"
 var pad = require('pad-component');
 // "Wrap strings to a specified length""
 var wrap = require('word-wrap');
@@ -47,6 +47,8 @@ var repeating = require('repeating');
 
 var topOffset = 3;
 var leftOffset = 17;
+
+// default yeoman ASCII art
 var defaultGreeting =
   '\n     _-----_' +
   '\n    |       |    ' +
@@ -59,11 +61,16 @@ var defaultGreeting =
   '\n ´   ' + chalk.red('`  |') + '° ' + chalk.red('´ Y') + ' ` ';
 
 /**
- * Method to do things
- * @param message asdf
- * @param options asa
- * @returns ansiStyles aasdfff
- * @returns greeting ffdfdd
+ * Like cowsay, but less cow. Generates an ASCII yeoman with a message.
+ * Yosay creates a duplicate of a passed string and removes all ansi styling.
+ * With this, the true length of the message string is available to `pad` and 
+ * `wrap` so they are able to properly parse the string. Additionally, the 
+ * character position of the ansi styling is stored so when the string is 
+ * printed in the message box yoman re-inserts any needed asci styling.
+ * 
+ * @param message The message string that you want yeoman to say
+ * @param options 
+ * @returns wrap 
  * 
  */
 module.exports = function (message, options) {
@@ -93,65 +100,91 @@ module.exports = function (message, options) {
   var completedString = '';
   var regExNewLine;
   
-  //if given 
+  //change wrapping length if user specified in options param eg. {maxLength:100}
   if (options.maxLength) {
     maxLength = stripAnsi(message).toLowerCase().split(' ').sort()[0].length;
 
+    //update local var maxLength
     if (maxLength &lt; options.maxLength) {
       maxLength = options.maxLength;
     }
   }
-
+  
+  // new regular expression to match the next whitespace in any maxLength
   regExNewLine = new RegExp('\\s{' + maxLength + '}');
-
+  
+  // create the frame of given maxLength using repeating like so:
+  // .------------------------.
+  // |       TEST TEXT        |
+  // '------------------------'
   frame = {
     top: '.' + repeating('-', maxLength + 2) + '.',
     side: ansiStyles.reset.open + '|' + ansiStyles.reset.open,
     bottom: ansiStyles.reset.open + '\'' + repeating('-', maxLength + 2) + '\''
   };
-
+  
+  // Store ansi for later restyling
+  // forEach ansi given by `ansi-regex`
   message.replace(ansiRegex, function (match, offset) {
     Object.keys(styledIndexes).forEach(function (key) {
       offset -= styledIndexes[key].length;
     });
-
+    
     styledIndexes[offset] = styledIndexes[offset] ? styledIndexes[offset] + match : match;
   });
 
+  // return wrapped string by using `word-wrap` on ansi stripped message with maxLength
   return wrap(stripAnsi(message), { width: maxLength })
+  // split by newline into array
     .split(/\n/)
+    // then reduce the array of strings to one string which will be restyled in final return
+    // param as initialValue, currentValue, currentIndex, array (that was created by .split())
     .reduce(function (greeting, str, index, array) {
+        console.log(greeting);
+      // string to add whitespace 
       var paddedString;
-
+      
+      // trim whitespace if the currentValue is not registerd character newline
       if (!regExNewLine.test(str)) {
         str = str.trim();
       }
-
+      
+      
+      // add that line to the local completedString
       completedString += str;
-
+      
+      // find and replace where each ansi was at location
       str = completedString
         .substr(completedString.length - str.length)
         .replace(/./g, function (char, charIndex) {
+          
+          // increment the idex to what we have processed
           if (index > 0) {
             charIndex += completedString.length - str.length + index;
           }
-
+          
+          // counter for if there are consecutive characters of ansi styling
           var hasContinuedStyle = 0;
+          // stroe consecutive ansi styling string
           var continuedStyle;
-
+          
+          // iterate through each key of the ansi styling object
+          // add to the continuedStyle string
           Object.keys(styledIndexes).forEach(function (offset) {
             if (charIndex > offset) {
               hasContinuedStyle++;
               continuedStyle = styledIndexes[offset];
             }
-
+            
             if (hasContinuedStyle === 1 &amp;&amp; charIndex &lt; offset) {
               hasContinuedStyle++;
             }
           });
-
+          
+          //check the object of ansi styling to see if that character needs styling
           if (styledIndexes[charIndex]) {
             return styledIndexes[charIndex] + char;
+            // if the ansi needs style for more than two consecutive char add to the continued styling
           } else if (hasContinuedStyle >= 2) {
             return continuedStyle + char;
           } else {
@@ -159,30 +192,37 @@ module.exports = function (message, options) {
           }
         })
         .trim();
-
+      
+      // use `pad-component` to add whitespace to center the strings to the frame
       paddedString = pad({
         length: stringWidth(str),
         valueOf: function () {
           return ansiStyles.reset.open + str + ansiStyles.reset.open;
         }
       }, maxLength);
-
+      
+      // if at the first pass of the string array add the top of the frame to the 
+      // greeting
       if (index === 0) {
         greeting[topOffset - 1] += frame.top;
       }
-
+      
+      // combine the message to the frame and padded strings
       greeting[index + topOffset] =
         (greeting[index + topOffset] || pad.left('', leftOffset)) +
         frame.side + ' ' + paddedString + ' ' + frame.side;
-
+       
       if (array.length === index + 1) {
         greeting[index + topOffset + 1] =
           (greeting[index + topOffset + 1] || pad.left('', leftOffset)) +
           frame.bottom;
       }
-
+      
+      // end of reduce function return every line of the greeting one by one
       return greeting;
+      // then split by newline char
     }, defaultGreeting.split(/\n/))
+    // and finally join each line
     .join('\n') + '\n';
 };
 </code></pre>
@@ -201,7 +241,7 @@ module.exports = function (message, options) {
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Jan 19 2016 19:06:24 GMT-0800 (PST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Jan 20 2016 14:54:53 GMT-0800 (PST)
 </footer>
 
 <script> prettyPrint(); </script>
