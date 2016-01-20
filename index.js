@@ -112,6 +112,7 @@ module.exports = function (message, options) {
     // then reduce the array of strings to one string which will be restyled in final return
     // param as initialValue, currentValue, currentIndex, array (that was created by .split())
     .reduce(function (greeting, str, index, array) {
+        console.log(greeting);
       // string to add whitespace 
       var paddedString;
       
@@ -140,12 +141,13 @@ module.exports = function (message, options) {
           var continuedStyle;
           
           // iterate through each key of the ansi styling object
+          // add to the continuedStyle string
           Object.keys(styledIndexes).forEach(function (offset) {
             if (charIndex > offset) {
               hasContinuedStyle++;
               continuedStyle = styledIndexes[offset];
             }
-
+            
             if (hasContinuedStyle === 1 && charIndex < offset) {
               hasContinuedStyle++;
             }
@@ -171,22 +173,27 @@ module.exports = function (message, options) {
         }
       }, maxLength);
       
-      // if at the first pass of the string array 
+      // if at the first pass of the string array add the top of the frame to the 
+      // greeting
       if (index === 0) {
         greeting[topOffset - 1] += frame.top;
       }
       
+      // combine the message to the frame and padded strings
       greeting[index + topOffset] =
         (greeting[index + topOffset] || pad.left('', leftOffset)) +
         frame.side + ' ' + paddedString + ' ' + frame.side;
-
+       
       if (array.length === index + 1) {
         greeting[index + topOffset + 1] =
           (greeting[index + topOffset + 1] || pad.left('', leftOffset)) +
           frame.bottom;
       }
-
+      
+      // end of reduce function return every line of the greeting one by one
       return greeting;
+      // then split by newline char
     }, defaultGreeting.split(/\n/))
+    // and finally join each line
     .join('\n') + '\n';
 };
