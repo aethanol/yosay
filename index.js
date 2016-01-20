@@ -2,7 +2,7 @@
 // "Terminal string styling done right" Chalk is a node module that allows color and other text formatting 
 // for output to the console
 var chalk = require('chalk');
-// "Trims string whitespace""
+// "Trims string whitespace"
 var pad = require('pad-component');
 // "Wrap strings to a specified length""
 var wrap = require('word-wrap');
@@ -95,40 +95,51 @@ module.exports = function (message, options) {
     bottom: ansiStyles.reset.open + '\'' + repeating('-', maxLength + 2) + '\''
   };
   
-  // forEach ansi given by `ansi-regex` in the message add to styledIndexes object
-  // later used to restyle the stripped message
+  // Store ansi for later restyling
+  // forEach ansi given by `ansi-regex`
   message.replace(ansiRegex, function (match, offset) {
     Object.keys(styledIndexes).forEach(function (key) {
       offset -= styledIndexes[key].length;
     });
-
+    
     styledIndexes[offset] = styledIndexes[offset] ? styledIndexes[offset] + match : match;
   });
 
-  // return wrapped string by using `word-wrap` on ansi stripped message
+  // return wrapped string by using `word-wrap` on ansi stripped message with maxLength
   return wrap(stripAnsi(message), { width: maxLength })
-  // split by newline
+  // split by newline into array
     .split(/\n/)
-    // then 
+    // then reduce the array of strings to one string which will be restyled in final return
+    // param as initialValue, currentValue, currentIndex, array (that was created by .split())
     .reduce(function (greeting, str, index, array) {
+      // string to add whitespace 
       var paddedString;
-
+      
+      // trim whitespace if the currentValue is not registerd character newline
       if (!regExNewLine.test(str)) {
         str = str.trim();
       }
-
+      
+      
+      // add that line to the local completedString
       completedString += str;
-
+      
+      // find and replace where each ansi was at location
       str = completedString
         .substr(completedString.length - str.length)
         .replace(/./g, function (char, charIndex) {
+          
+          // increment the idex to what we have processed
           if (index > 0) {
             charIndex += completedString.length - str.length + index;
           }
-
+          
+          // counter for if there are consecutive characters of ansi styling
           var hasContinuedStyle = 0;
+          // stroe consecutive ansi styling string
           var continuedStyle;
-
+          
+          // iterate through each key of the ansi styling object
           Object.keys(styledIndexes).forEach(function (offset) {
             if (charIndex > offset) {
               hasContinuedStyle++;
@@ -139,9 +150,11 @@ module.exports = function (message, options) {
               hasContinuedStyle++;
             }
           });
-
+          
+          //check the object of ansi styling to see if that character needs styling
           if (styledIndexes[charIndex]) {
             return styledIndexes[charIndex] + char;
+            // if the ansi needs style for more than two consecutive char add to the continued styling
           } else if (hasContinuedStyle >= 2) {
             return continuedStyle + char;
           } else {
@@ -149,18 +162,20 @@ module.exports = function (message, options) {
           }
         })
         .trim();
-
+      
+      // use `pad-component` to add whitespace to center the strings to the frame
       paddedString = pad({
         length: stringWidth(str),
         valueOf: function () {
           return ansiStyles.reset.open + str + ansiStyles.reset.open;
         }
       }, maxLength);
-
+      
+      // if at the first pass of the string array 
       if (index === 0) {
         greeting[topOffset - 1] += frame.top;
       }
-
+      
       greeting[index + topOffset] =
         (greeting[index + topOffset] || pad.left('', leftOffset)) +
         frame.side + ' ' + paddedString + ' ' + frame.side;
