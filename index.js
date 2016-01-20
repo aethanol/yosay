@@ -1,15 +1,26 @@
 'use strict';
+// "Terminal string styling done right" Chalk is a node module that allows color and other text formatting 
+// for output to the console
 var chalk = require('chalk');
+// "Trims string whitespace""
 var pad = require('pad-component');
+// "Wrap strings to a specified length""
 var wrap = require('word-wrap');
+// "Get the visual width of a string - the number of columns required to display it"
 var stringWidth = require('string-width');
+// "Strip ANSI escape codes" Invisible ANSI codes will break the output probably
 var stripAnsi = require('strip-ansi');
+// "ANSI escape codes for styling strings in the terminal" This is a module in chalk to directly deal with ansi stylings
 var ansiStyles = require('ansi-styles');
+// "Regular expression for matching ANSI escape codes " This is a module in chalk to compare ANSI escape codes
 var ansiRegex = require('ansi-regex')();
+
 var repeating = require('repeating');
 
 var topOffset = 3;
 var leftOffset = 17;
+
+// default yeoman ASCII art
 var defaultGreeting =
   '\n     _-----_' +
   '\n    |       |    ' +
@@ -21,6 +32,19 @@ var defaultGreeting =
   '\n   __' + chalk.yellow('\'.___.\'') + '__   ' +
   '\n ´   ' + chalk.red('`  |') + '° ' + chalk.red('´ Y') + ' ` ';
 
+/**
+ * Like cowsay, but less cow. Generates an ASCII yeoman with a message.
+ * Yosay creates a duplicate of a passed string and removes all ansi styling.
+ * With this, the true length of the message string is available to `pad` and 
+ * `wrap` so they are able to properly parse the string. Additionally, the 
+ * character position of the ansi styling is stored so when the string is 
+ * printed in the message box yoman re-inserts any needed asci styling.
+ * 
+ * @param message The message string that you want yeoman to say
+ * @param options 
+ * @returns wrap 
+ * 
+ */
 module.exports = function (message, options) {
   message = (message || 'Welcome to Yeoman, ladies and gentlemen!').trim();
   options = options || {};
@@ -40,29 +64,39 @@ module.exports = function (message, options) {
    *
    * Better implementations welcome :)
    */
-
+  
+  // default wrapping length
   var maxLength = 24;
   var frame;
   var styledIndexes = {};
   var completedString = '';
   var regExNewLine;
-
+  
+  //change wrapping length if user specified in options param eg. {maxLength:100}
   if (options.maxLength) {
     maxLength = stripAnsi(message).toLowerCase().split(' ').sort()[0].length;
 
+    //update local var maxLength
     if (maxLength < options.maxLength) {
       maxLength = options.maxLength;
     }
   }
-
+  
+  // new regular expression to match the next whitespace in any maxLength
   regExNewLine = new RegExp('\\s{' + maxLength + '}');
-
+  
+  // create the frame of given maxLength using repeating like so:
+  // .------------------------.
+  // |       TEST TEXT        |
+  // '------------------------'
   frame = {
     top: '.' + repeating('-', maxLength + 2) + '.',
     side: ansiStyles.reset.open + '|' + ansiStyles.reset.open,
     bottom: ansiStyles.reset.open + '\'' + repeating('-', maxLength + 2) + '\''
   };
-
+  
+  // forEach ansi given by `ansi-regex` in the message add to styledIndexes object
+  // later used to restyle the stripped message
   message.replace(ansiRegex, function (match, offset) {
     Object.keys(styledIndexes).forEach(function (key) {
       offset -= styledIndexes[key].length;
@@ -71,8 +105,11 @@ module.exports = function (message, options) {
     styledIndexes[offset] = styledIndexes[offset] ? styledIndexes[offset] + match : match;
   });
 
+  // return wrapped string by using `word-wrap` on ansi stripped message
   return wrap(stripAnsi(message), { width: maxLength })
+  // split by newline
     .split(/\n/)
+    // then 
     .reduce(function (greeting, str, index, array) {
       var paddedString;
 
